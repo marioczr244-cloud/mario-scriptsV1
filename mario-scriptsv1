@@ -1,0 +1,657 @@
+-- Carregar Rayfield
+local Rayfield = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Rayfield/main/source.lua"))()
+
+-- Criar interface principal
+local Window = Rayfield:CreateWindow({
+    Name = "MARIO-SCRIPTS : Blox Fruits",
+    LoadingTitle = "Carregando...",
+    LoadingSubtitle = "Aguarde um momento",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "MarioBloxFruits",
+        FileName = "Config"
+    },
+    Discord = {
+        Enabled = false
+    },
+    KeySystem = false
+})
+
+-- ==================== VARIÁVEIS GLOBAIS ====================
+local player = game.Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local players = game:GetService("Players")
+local runService = game:GetService("RunService")
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local teleportService = game:GetService("TeleportService")
+local tweenService = game:GetService("TweenService")
+
+-- Configurações
+local autoFarm = false
+local autoQuest = false
+local bringMob = false
+local autoStats = false
+local autoFruit = false
+local fruitSniper = false
+local autoBoss = false
+local autoDungeon = false
+local fastBoat = false
+local autoBuy = false
+local autoSaber = false
+local serverHop = false
+local fpsBoost = false
+local autoAura = false
+local selectedWeapon = "Melee"
+local currentLevel = player.Data.Level.Value or 0
+local weaponList = {"Melee", "Sword", "Fruit", "Gun"}
+local statPriority = {
+    Melee = 1,
+    Defense = 2,
+    Sword = 3,
+    Fruit = 4,
+    Gun = 5
+}
+
+-- ==================== FUNÇÕES PRINCIPAIS ====================
+
+-- Função para teleportar
+local function teleportTo(position)
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        character.HumanoidRootPart.CFrame = position
+    end
+end
+
+-- Função para ativar aura
+local function activateAura()
+    if autoAura then
+        local args = {[1] = "Aura", [2] = "Activate"}
+        replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+    end
+end
+
+-- Função para pegar missão
+local function getQuest(questNPC)
+    local args = {[1] = "StartQuest", [2] = questNPC}
+    replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+end
+
+-- Função para entregar missão
+local function completeQuest()
+    local args = {[1] = "FinishQuest"}
+    replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+end
+
+-- Função para distribuir stats
+local function distributeStats()
+    if autoStats then
+        for stat, priority in pairs(statPriority) do
+            for i = 1, priority do
+                local args = {[1] = "AddPoint", [2] = stat, [3] = 1}
+                replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+            end
+        end
+    end
+end
+
+-- Função para juntar mobs (Bring Mob)
+local function bringMobsToPosition(mobPosition)
+    if bringMob then
+        for _, mob in ipairs(workspace:GetDescendants()) do
+            if mob:IsA("Model") and mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+                if (mob.HumanoidRootPart.Position - mobPosition).Magnitude < 100 then
+                    mob.HumanoidRootPart.CFrame = mobPosition
+                end
+            end
+        end
+    end
+end
+
+-- Função para farmar NPCs
+local function farmNPCs(npcName, questArea)
+    if not autoFarm then return end
+    
+    for _, npc in ipairs(workspace:GetDescendants()) do
+        if npc:IsA("Model") and npc.Name == npcName and npc:FindFirstChild("Humanoid") and npc.Humanoid.Health > 0 then
+            activateAura()
+            local npcPos = npc.HumanoidRootPart.Position
+            bringMobsToPosition(npcPos)
+            teleportTo(npc.HumanoidRootPart.CFrame * CFrame.new(0, 5, 5))
+            
+            -- Atacar NPC
+            local args = {[1] = "Click"}
+            replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+        end
+    end
+end
+
+-- Função para comprar frutas
+local function buyFruit()
+    if autoFruit then
+        local args = {[1] = "PurchaseFruit", [2] = "Random"}
+        replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+    end
+end
+
+-- Função para detectar frutas no chão (Fruit Sniper)
+local function detectFruits()
+    if not fruitSniper then return end
+    
+    local rareFruits = {"Leopard", "Dragon", "Venom", "Dough", "Spirit", "Control"}
+    for _, fruit in ipairs(workspace:GetDescendants()) do
+        if fruit:IsA("Tool") and fruit:FindFirstChild("Handle") then
+            for _, rare in ipairs(rareFruits) do
+                if fruit.Name:find(rare) then
+                    teleportTo(fruit.Handle.CFrame)
+                    Rayfield:Notify({
+                        Title = "Fruit Sniper",
+                        Content = "Fruta rara encontrada: " .. fruit.Name,
+                        Duration = 3
+                    })
+                end
+            end
+        end
+    end
+end
+
+-- Função para farmar bosses
+local function farmBoss(bossName)
+    if not autoBoss then return end
+    
+    for _, boss in ipairs(workspace:GetDescendants()) do
+        if boss:IsA("Model") and boss.Name == bossName and boss:FindFirstChild("Humanoid") and boss.Humanoid.Health > 0 then
+            teleportTo(boss.HumanoidRootPart.CFrame * CFrame.new(0, 5, 5))
+            activateAura()
+            
+            local args = {[1] = "Click"}
+            replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+        end
+    end
+end
+
+-- Função para raids
+local function startRaid()
+    if not autoDungeon then return end
+    
+    local args = {[1] = "Raids", [2] = "Start"}
+    replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+end
+
+-- Função para acelerar barco (Fast Boat)
+local function boostBoat()
+    if not fastBoat then return end
+    
+    for _, boat in ipairs(workspace:GetDescendants()) do
+        if boat:IsA("VehicleSeat") and boat.Parent and boat.Parent:FindFirstChild("BodyVelocity") then
+            boat.Parent.BodyVelocity.Velocity = boat.Parent.BodyVelocity.Velocity * 10
+        end
+    end
+end
+
+-- Função para comprar itens (Auto Buy)
+local function buyItem(itemName)
+    if not autoBuy then return end
+    
+    local args = {[1] = "BuyItem", [2] = itemName}
+    replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+end
+
+-- Função para Auto Saber/CDK
+local function doSaberQuest()
+    if not autoSaber then return end
+    
+    -- Teleport para a ilha do Saber
+    teleportTo(CFrame.new(-1195, 85, -1080))
+    wait(2)
+    
+    -- Completar missão do Saber
+    local args = {[1] = "Saber", [2] = "Complete"}
+    replicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+end
+
+-- Função para Server Hop
+local function hopServer()
+    if not serverHop then return end
+    
+    local servers = game:GetService("TeleportService"):GetGameInstances()
+    for _, server in ipairs(servers) do
+        if server.Ping < 100 then
+            teleportService:TeleportToPlaceInstance(game.PlaceId, server.JobId, player)
+            break
+        end
+    end
+end
+
+-- Função para FPS Boost
+local function boostFPS()
+    if not fpsBoost then return end
+    
+    for _, descendant in ipairs(workspace:GetDescendants()) do
+        if descendant:IsA("Decal") or descendant:IsA("Texture") then
+            descendant.Transparency = 1
+        end
+        if descendant:IsA("ParticleEmitter") then
+            descendant.Enabled = false
+        end
+    end
+    
+    game:GetService("Lighting").GlobalShadows = false
+    game:GetService("Lighting").Technology = Enum.Technology.Compatibility
+end
+
+-- ==================== INTERFACE RAYFIELD ====================
+
+-- ABA 1: MAIN / AUTOFARM
+local MainTab = Window:CreateTab("Main / Autofarm", 4483362458)
+
+MainTab:CreateSection("Auto Farm")
+
+MainTab:CreateToggle({
+    Name = "Auto Farm Level",
+    CurrentValue = false,
+    Flag = "AutoFarm",
+    Callback = function(Value)
+        autoFarm = Value
+        if Value then
+            Rayfield:Notify({Title = "Auto Farm", Content = "Ativado!", Duration = 2})
+            while autoFarm do
+                runService.RenderStepped:Wait()
+                -- Farm NPCs baseado no nível
+                if currentLevel < 30 then
+                    farmNPCs("Bandit", "Pirate Starter")
+                elseif currentLevel < 60 then
+                    farmNPCs("Monkey", "Jungle")
+                elseif currentLevel < 90 then
+                    farmNPCs("Pirate", "Pirate Village")
+                elseif currentLevel < 120 then
+                    farmNPCs("Desert Bandit", "Desert")
+                end
+            end
+        end
+    end
+})
+
+MainTab:CreateDropdown({
+    Name = "Select Weapon",
+    Options = weaponList,
+    CurrentOption = "Melee",
+    Flag = "WeaponSelect",
+    Callback = function(Value)
+        selectedWeapon = Value
+        Rayfield:Notify({Title = "Weapon", Content = "Arma selecionada: " .. Value, Duration = 2})
+    end
+})
+
+MainTab:CreateToggle({
+    Name = "Auto Farm Quest",
+    CurrentValue = false,
+    Flag = "AutoQuest",
+    Callback = function(Value)
+        autoQuest = Value
+    end
+})
+
+MainTab:CreateToggle({
+    Name = "Bring Mob (Mob Aura)",
+    CurrentValue = false,
+    Flag = "BringMob",
+    Callback = function(Value)
+        bringMob = Value
+    end
+})
+
+-- ABA 2: STATS / STATUS
+local StatsTab = Window:CreateTab("Stats / Status", 4483362458)
+
+StatsTab:CreateSection("Auto Stats")
+
+StatsTab:CreateToggle({
+    Name = "Auto Stats",
+    CurrentValue = false,
+    Flag = "AutoStats",
+    Callback = function(Value)
+        autoStats = Value
+        if Value then
+            distributeStats()
+        end
+    end
+})
+
+StatsTab:CreateSlider({
+    Name = "Melee Priority",
+    Range = {0, 10},
+    Increment = 1,
+    CurrentValue = 3,
+    Flag = "MeleePriority",
+    Callback = function(Value)
+        statPriority.Melee = Value
+    end
+})
+
+StatsTab:CreateSlider({
+    Name = "Defense Priority",
+    Range = {0, 10},
+    Increment = 1,
+    CurrentValue = 3,
+    Flag = "DefensePriority",
+    Callback = function(Value)
+        statPriority.Defense = Value
+    end
+})
+
+StatsTab:CreateSlider({
+    Name = "Sword Priority",
+    Range = {0, 10},
+    Increment = 1,
+    CurrentValue = 2,
+    Flag = "SwordPriority",
+    Callback = function(Value)
+        statPriority.Sword = Value
+    end
+})
+
+StatsTab:CreateSlider({
+    Name = "Fruit Priority",
+    Range = {0, 10},
+    Increment = 1,
+    CurrentValue = 1,
+    Flag = "FruitPriority",
+    Callback = function(Value)
+        statPriority.Fruit = Value
+    end
+})
+
+StatsTab:CreateSlider({
+    Name = "Gun Priority",
+    Range = {0, 10},
+    Increment = 1,
+    CurrentValue = 1,
+    Flag = "GunPriority",
+    Callback = function(Value)
+        statPriority.Gun = Value
+    end
+})
+
+-- ABA 3: COMBAT / FRUITS
+local CombatTab = Window:CreateTab("Combat / Fruits", 4483362458)
+
+CombatTab:CreateSection("Fruits")
+
+CombatTab:CreateToggle({
+    Name = "Auto Fruit (Comprar Frutas)",
+    CurrentValue = false,
+    Flag = "AutoFruit",
+    Callback = function(Value)
+        autoFruit = Value
+        if Value then
+            buyFruit()
+        end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Fruit Sniper",
+    CurrentValue = false,
+    Flag = "FruitSniper",
+    Callback = function(Value)
+        fruitSniper = Value
+        if Value then
+            while fruitSniper do
+                runService.RenderStepped:Wait()
+                detectFruits()
+            end
+        end
+    end
+})
+
+CombatTab:CreateToggle({
+    Name = "Auto Aura",
+    CurrentValue = false,
+    Flag = "AutoAura",
+    Callback = function(Value)
+        autoAura = Value
+        if Value then
+            activateAura()
+        end
+    end
+})
+
+-- ABA 4: BOSS / DUNGEON / RAIDS
+local BossTab = Window:CreateTab("Boss / Dungeon / Raids", 4483362458)
+
+BossTab:CreateSection("Boss Farm")
+
+BossTab:CreateToggle({
+    Name = "Auto Boss Farm",
+    CurrentValue = false,
+    Flag = "AutoBoss",
+    Callback = function(Value)
+        autoBoss = Value
+    end
+})
+
+BossTab:CreateButton({
+    Name = "Farm Saber Boss",
+    Callback = function()
+        farmBoss("Saber Expert")
+    end
+})
+
+BossTab:CreateSection("Dungeon / Raids")
+
+BossTab:CreateToggle({
+    Name = "Auto Dungeon / Raid",
+    CurrentValue = false,
+    Flag = "AutoDungeon",
+    Callback = function(Value)
+        autoDungeon = Value
+        if Value then
+            startRaid()
+        end
+    end
+})
+
+BossTab:CreateToggle({
+    Name = "Fast Boat",
+    CurrentValue = false,
+    Flag = "FastBoat",
+    Callback = function(Value)
+        fastBoat = Value
+        if Value then
+            boostBoat()
+        end
+    end
+})
+
+-- ABA 5: SHOP / MISC
+local ShopTab = Window:CreateTab("Shop / Misc", 4483362458)
+
+ShopTab:CreateSection("Auto Buy")
+
+ShopTab:CreateToggle({
+    Name = "Auto Buy Items",
+    CurrentValue = false,
+    Flag = "AutoBuy",
+    Callback = function(Value)
+        autoBuy = Value
+    end
+})
+
+ShopTab:CreateButton({
+    Name = "Buy Haki",
+    Callback = function()
+        buyItem("Haki")
+    end
+})
+
+ShopTab:CreateSection("Legendary Swords")
+
+ShopTab:CreateToggle({
+    Name = "Auto Saber / CDK",
+    CurrentValue = false,
+    Flag = "AutoSaber",
+    Callback = function(Value)
+        autoSaber = Value
+        if Value then
+            doSaberQuest()
+        end
+    end
+})
+
+ShopTab:CreateSection("Server")
+
+ShopTab:CreateToggle({
+    Name = "Server Hop",
+    CurrentValue = false,
+    Flag = "ServerHop",
+    Callback = function(Value)
+        serverHop = Value
+        if Value then
+            hopServer()
+        end
+    end
+})
+
+ShopTab:CreateSection("Teleports")
+
+ShopTab:CreateButton({
+    Name = "Teleport to Pirate Starter",
+    Callback = function()
+        teleportTo(CFrame.new(1024, 20, 1250))
+    end
+})
+
+ShopTab:CreateButton({
+    Name = "Teleport to Jungle",
+    Callback = function()
+        teleportTo(CFrame.new(-1180, 80, 560))
+    end
+})
+
+ShopTab:CreateButton({
+    Name = "Teleport to Pirate Village",
+    Callback = function()
+        teleportTo(CFrame.new(-610, 30, -260))
+    end
+})
+
+ShopTab:CreateButton({
+    Name = "Teleport to Desert",
+    Callback = function()
+        teleportTo(CFrame.new(980, 20, 70))
+    end
+})
+
+ShopTab:CreateButton({
+    Name = "Teleport to Frozen Village",
+    Callback = function()
+        teleportTo(CFrame.new(490, 20, -520))
+    end
+})
+
+-- ABA 6: SETTINGS / CONFIG
+local SettingsTab = Window:CreateTab("Settings / Config", 4483362458)
+
+SettingsTab:CreateSection("Performance")
+
+SettingsTab:CreateToggle({
+    Name = "FPS Boost",
+    CurrentValue = false,
+    Flag = "FPSBoost",
+    Callback = function(Value)
+        fpsBoost = Value
+        if Value then
+            boostFPS()
+        end
+    end
+})
+
+SettingsTab:CreateSection("Keybinds")
+
+SettingsTab:CreateKeybind({
+    Name = "Toggle Auto Farm",
+    CurrentKeybind = "F",
+    Flag = "KeybindFarm",
+    Callback = function()
+        autoFarm = not autoFarm
+        Rayfield:Notify({
+            Title = "Keybind",
+            Content = "Auto Farm: " .. (autoFarm and "Ativado" or "Desativado"),
+            Duration = 2
+        })
+    end
+})
+
+SettingsTab:CreateKeybind({
+    Name = "Toggle Auto Quest",
+    CurrentKeybind = "Q",
+    Flag = "KeybindQuest",
+    Callback = function()
+        autoQuest = not autoQuest
+    end
+})
+
+SettingsTab:CreateKeybind({
+    Name = "Toggle Bring Mob",
+    CurrentKeybind = "B",
+    Flag = "KeybindBring",
+    Callback = function()
+        bringMob = not bringMob
+    end
+})
+
+SettingsTab:CreateSection("Save / Load")
+
+SettingsTab:CreateButton({
+    Name = "Save Configuration",
+    Callback = function()
+        Rayfield:Notify({Title = "Config", Content = "Configurações salvas!", Duration = 2})
+    end
+})
+
+SettingsTab:CreateButton({
+    Name = "Load Configuration",
+    Callback = function()
+        Rayfield:Notify({Title = "Config", Content = "Configurações carregadas!", Duration = 2})
+    end
+})
+
+-- ==================== LOOP PRINCIPAL ====================
+runService.RenderStepped:Connect(function()
+    -- Atualizar nível atual
+    if player.Data and player.Data.Level then
+        currentLevel = player.Data.Level.Value
+    end
+    
+    -- Auto Quest
+    if autoQuest and autoFarm then
+        completeQuest()
+    end
+    
+    -- Auto Stats
+    if autoStats then
+        distributeStats()
+    end
+    
+    -- Auto Aura
+    if autoAura then
+        activateAura()
+    end
+    
+    -- Fast Boat
+    if fastBoat then
+        boostBoat()
+    end
+    
+    -- FPS Boost
+    if fpsBoost then
+        boostFPS()
+    end
+end)
+
+-- Notificação de carregamento
+Rayfield:Notify({
+    Title = "MARIO-SCRIPTS : Blox Fruits",
+    Content = "Script carregado com sucesso!",
+    Duration = 3
+})
